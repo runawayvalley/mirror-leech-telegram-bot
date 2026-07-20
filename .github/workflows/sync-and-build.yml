@@ -32,7 +32,7 @@ jobs:
       - name: Register upstream remote
         run: git remote add upstream https://github.com/${{ env.UPSTREAM }}.git
 
-      - name: Compute before/after SHAs
+      - name: Compute sync status (ancestry check)
         id: shas
         run: |
           git fetch upstream ${{ env.UPSTREAM_BRANCH }}
@@ -40,12 +40,16 @@ jobs:
           AFTER=$(git rev-parse upstream/${{ env.UPSTREAM_BRANCH }})
           echo "before=$BEFORE" >> "$GITHUB_OUTPUT"
           echo "after=$AFTER"   >> "$GITHUB_OUTPUT"
-          if [ "$BEFORE" = "$AFTER" ]; then
+          # Fork needs an update only if upstream's tip is NOT already
+          # contained in the fork (i.e. upstream is not an ancestor of origin).
+          # A bare "BEFORE != AFTER" would be wrong: the fork has its own
+          # commits on top of upstream, so the tips always differ.
+          if git merge-base --is-ancestor upstream/${{ env.UPSTREAM_BRANCH }} origin/${{ env.BASE_BRANCH }}; then
             echo "updated=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Fork already up to date with upstream ($AFTER). Build skipped."
+            echo "::notice::Fork already contains all upstream commits (upstream=$AFTER is an ancestor of fork=$BEFORE). Build skipped."
           else
             echo "updated=true"  >> "$GITHUB_OUTPUT"
-            echo "::notice::Upstream has updates ($BEFORE -> $AFTER). Merging & building."
+            echo "::notice::Upstream has new commits not in fork ($BEFORE -> $AFTER). Merging & building."
           fi
 
       - name: Merge upstream into fork master (only if behind)
