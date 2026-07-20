@@ -1,5 +1,7 @@
-name: Build and Push to GHCR
+name: Build and Push to GHCR (manual)
 
+# Manual-only build. The scheduled "Sync Upstream & Build to GHCR" workflow
+# handles auto-sync + build. This is kept for on-demand manual publishes.
 on:
   workflow_dispatch:
     inputs:
